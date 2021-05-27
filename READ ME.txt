@@ -1,10 +1,5 @@
-Hi my name is Caston Young, and I know I am a bit late in delivering this, but I had a ton
-of set backs, like even more than the usual ton of set backs in programing.
-(I spent the first 3 days just trying to get Visual Studio to work and packages to install.)
-Anyways, although I haven't actually used WinForms in a long time, I thought it would be
-easier to setup than a WPF app, and while that may have been the case at first, I didn't
-realize that RichTextBox didn't come with a default UI, and umm you may have to format the
-text inside the powerpoint itself.  You can copy and paste the text into the RichTextBox,
-or hit the Read button to bring it over; however, the only text that matters is in the 
-title field and the powerpoint itself.  There is one more big caveat though, and that's
-that the list of images can only show small icons for seemingly no reason.  
+Comments and description available on request.  (I'd say more, but it looks like I might be out of time.)
+
+~ Caston Young
+  503-388-8651
+  castony.pa@gmail.com
