@@ -28,7 +28,6 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.components = new System.ComponentModel.Container();
 			this.label1 = new System.Windows.Forms.Label();
 			this.TitleBox = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -38,7 +37,6 @@
 			this.ReadBtn = new System.Windows.Forms.Button();
 			this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
 			this.ListView1 = new System.Windows.Forms.ListView();
-			this.imageList1 = new System.Windows.Forms.ImageList(this.components);
 			this.toolStrip1 = new System.Windows.Forms.ToolStrip();
 			this.SuspendLayout();
 			// 
@@ -87,6 +85,7 @@
 			this.BodyTextBox.Size = new System.Drawing.Size(538, 157);
 			this.BodyTextBox.TabIndex = 3;
 			this.BodyTextBox.Text = "";
+			this.BodyTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.b);
 			// 
 			// ImageBtn
 			// 
@@ -142,12 +141,6 @@
 			this.ListView1.UseCompatibleStateImageBehavior = false;
 			this.ListView1.ItemActivate += new System.EventHandler(this.NewLoadImages);
 			// 
-			// imageList1
-			// 
-			this.imageList1.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit;
-			this.imageList1.ImageSize = new System.Drawing.Size(16, 16);
-			this.imageList1.TransparentColor = System.Drawing.Color.Transparent;
-			// 
 			// toolStrip1
 			// 
 			this.toolStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
@@ -183,14 +176,13 @@
 		private System.Windows.Forms.Label label1;
 		private System.Windows.Forms.TextBox TitleBox;
 		private System.Windows.Forms.Label label2;
-		private System.Windows.Forms.RichTextBox BodyTextBox;
 		private System.Windows.Forms.Button ImageBtn;
 		private System.Windows.Forms.Button SaveBtn;
 		private System.Windows.Forms.Button ReadBtn;
 		private System.ComponentModel.BackgroundWorker backgroundWorker1;
 		private System.Windows.Forms.ListView ListView1;
-		private System.Windows.Forms.ImageList imageList1;
 		private System.Windows.Forms.ToolStrip toolStrip1;
+		public System.Windows.Forms.RichTextBox BodyTextBox;
 	}
 }
 

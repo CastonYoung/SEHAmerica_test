@@ -1,12 +1,19 @@
-﻿using System;
+using System;
+//using System.IO;
+//using System.Linq;
+//using System.Text;
+//using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Windows.Forms;
+//using System.Windows.Documents;
 using Microsoft.Office.Core;
 using Ppt = Microsoft.Office.Interop.PowerPoint;
 using Google.Apis.Customsearch.v1;
 using Google.Apis.Customsearch.v1.Data;
-
 using ListRequest = Google.Apis.Customsearch.v1.CseResource.ListRequest;
+using System.IO;
+using System.Text;
+using System.Drawing;
 
 namespace SEHAmerica_ppt_Maker
 {
@@ -99,9 +106,9 @@ namespace SEHAmerica_ppt_Maker
 			presentation.SlideMaster.CustomLayouts[Ppt.PpSlideLayout.ppLayoutPictureWithCaption];//36
 		#endregion
 		Ppt.Slide Active_slide => PowerPoint_App.ActiveWindow.View.Slide;
-		ImageList thumb_list, image_list;
+		ImageList thumb_list, image_list;	//Lists of the "thumbnail" images and the full image links.
 		OpenFileDialog ofd;
-		List<string> box_list;
+		List<string> terms, box_list;
 		string file_path = null;
 		int image_count;
 
@@ -129,17 +136,23 @@ namespace SEHAmerica_ppt_Maker
 			image_count = 10;	//For now we're just going with 10.
 			thumb_list = new ImageList();
 			image_list = new ImageList
-				{ ImageSize = new System.Drawing.Size(160, 160) };
+				{ ImageSize = new Size(160, 160) };
+			terms = new List<string>();
 			box_list = new List<string>();
 		}
 
 		public bool NoPowerPoint()
-		{	
-			try { return null == PowerPoint_App || "PowerPoint" == PowerPoint_App.Caption; }
+		{	try { return null == PowerPoint_App || "PowerPoint" == PowerPoint_App.Caption; }
 			catch(System.Runtime.InteropServices.COMException)
 			{	MessageBox.Show(frOz_err_msg);
 				return true;
 			}
+		}
+
+		public string SingleString(string[] strings)
+		{	string single_string = string.Empty;
+			foreach(string text in strings) single_string += text + '\n';
+			return single_string;
 		}
 
 		private void CreateNewPresentation()
@@ -151,6 +164,11 @@ namespace SEHAmerica_ppt_Maker
 			presentation.Slides.AddSlide(1, presentation.SlideMaster.CustomLayouts[layout]);
 		}
 		
+		/*
+		 * I normally put the code on the same line as the '{' for if statements and loops;
+		 * however, I wanted to keep the ofd stuff seperate.
+		 * Regardless I will pay much more circumspection to style for once I know the company's standards.
+		 */
 		private void ReadSlide(object sender, EventArgs e)
 		{
 			if (NoPowerPoint())
@@ -172,7 +190,7 @@ namespace SEHAmerica_ppt_Maker
 			BodyTextBox.Text= string.Empty;
 			layout = Active_slide.Layout;
 
-			if (layout == Ppt.PpSlideLayout.ppLayoutText)
+			if (layout == Ppt.PpSlideLayout.ppLayoutText)//Currently the program can only do 
 			{	TitleBox.Text	= Active_slide.Shapes[1].TextFrame.TextRange.Text;
 				BodyTextBox.Text= Active_slide.Shapes[2].TextFrame.TextRange.Text;
 			}
@@ -182,6 +200,7 @@ namespace SEHAmerica_ppt_Maker
 
 				if (shape.Name.Contains("Title"))
 				{	TitleBox.Text += shape.TextFrame.TextRange.Text + ' ';
+					terms.Insert(0, shape.TextFrame.TextRange.Text);
 					box_list.Insert(0, shape.Name);
 				}
 				
@@ -193,49 +212,54 @@ namespace SEHAmerica_ppt_Maker
 					box_list.Add(shape.Name);
 				}
 			}
-		}
+		}//			^As I said ealier I'll stick to the company style guide once I have it.
+		//			things got a little out of hand with this project.
 
 		private void Save(object sender, EventArgs e)
-		{
-			try
-			{	if (NoPowerPoint())
-				{	SaveFileDialog sfd = new SaveFileDialog { Filter = powerpointformat };
-					try
-					{	if (sfd.ShowDialog() == DialogResult.OK) file_path = sfd.FileName;
-						else return;
-					} catch (SystemException exc)
-					{	MessageBox.Show(save_err_msg + sfd.FileName + ":\n\n" + exc);
-						return;
-					} finally { sfd.Dispose(); }
+		{try
+		  {	if (NoPowerPoint())
+			{	
+				SaveFileDialog sfd = new SaveFileDialog { Filter = powerpointformat };
+				try
+				{	if (sfd.ShowDialog() == DialogResult.OK) file_path = sfd.FileName;
+					else return;
+				} catch (SystemException exc)
+				{	MessageBox.Show(save_err_msg + sfd.FileName + ":\n\n" + exc);
+					return;
+				} finally { sfd.Dispose(); }
 				
-					CreateNewPresentation();
-				}
-				else foreach (var item in presentation.Slides[1].Shapes)
-				{	var shape = (Ppt.Shape)item;
-					if (shape.HasTextFrame != MsoTriState.msoTrue) continue;
+				CreateNewPresentation();
+			}
+		  
+			foreach (var item in presentation.Slides[1].Shapes)
+			{	var shape = (Ppt.Shape)item;
+				if (shape.HasTextFrame != MsoTriState.msoTrue) continue;
 
-					if (shape.Name == box_list[0])
-						shape.TextFrame.TextRange.Text = TitleBox.Text;
+				if (shape.Name == box_list[0])
+				{	
+					shape.TextFrame.TextRange.Text = TitleBox.Text;
+				}
 				
-					else if(box_list.Contains(shape.Name))
-					{	IDataObject clipped = Clipboard.GetDataObject();
-						BodyTextBox.SelectAll();
-						BodyTextBox.Copy();
-						shape.TextFrame.TextRange.Paste();
-						Clipboard.SetDataObject(clipped, true);
-					}
+				else if(box_list.Contains(shape.Name))
+				{	IDataObject clipped = Clipboard.GetDataObject();
+					BodyTextBox.SelectAll();
+					BodyTextBox.Copy();
+					shape.TextFrame.TextRange.Paste();
+					Clipboard.SetDataObject(clipped, true);
 				}
+			}
+			//Active_slide.Shapes[1].TextFrame.TextRange.Text = TitleBox.Text;
+			//Active_slide.Shapes[2].TextFrame.TextRange.Text = BodyTextBox.Text;
 
-				presentation.SaveAs(file_path);
-
-			} catch (ArgumentException exc)
-			{	MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc);	}
+			try { presentation.SaveAs(file_path); }
+			catch (Exception) {  }
+		  } catch (ArgumentException exc)
+				{ MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc); }
 		}
 
 		private void SearchImages(object sender, EventArgs e)
 		{
 			if (NoPowerPoint()) return;
-
 			var imgs = GoogleImageSearch(ParseText(TitleBox.Text, BodyTextBox.Rtf), image_count);
 			
 			var pb = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom };
@@ -253,7 +277,6 @@ namespace SEHAmerica_ppt_Maker
 					//image_list.Images.Add(pb.ErrorImage);
 				}
 			}
-
 			ListView1.SmallImageList = thumb_list;
 			ListView1.LargeImageList = image_list;
 			ListView1.StateImageList = image_list;
@@ -280,6 +303,14 @@ namespace SEHAmerica_ppt_Maker
 			}
 		}
 
+		const StringComparison matchKs = StringComparison.Ordinal;
+		public int FindFormat(string format, int i)
+		{	
+			return Math.Min
+			(	BodyTextBox.Rtf.IndexOf(format + ' ', i, matchKs),
+				BodyTextBox.Rtf.IndexOf(format +'\\', i, matchKs)	);
+		}
+
 		private string[] ParseText(string titletext, string richtext)
 		{	
 			const StringComparison matchKs = StringComparison.Ordinal;
@@ -287,22 +318,20 @@ namespace SEHAmerica_ppt_Maker
 			List<int> startindices = new List<int>(), endindices = new List<int>{-3};
 
 			
-			try
-			{	for (int i = 0; i < image_count - 1; ++i)
-				{	var starti = richtext.IndexOf("\\b" , endindices[i] + 3, matchKs);
-					char after_b = richtext[starti + 2];
-					while (char.IsLetterOrDigit(after_b) && after_b != '1')// Old versions of the Rtf standard used \b1 for turning bold on.
-					{	starti = richtext.IndexOf("\\b" , starti + 2, matchKs);
-						if (-1 == starti) break;
-						after_b = richtext[starti + 2];
-					}
+			try{for (int i = 0; i < image_count - 1; ++i)
+			{	var starti = richtext.IndexOf("\\b" , endindices[i] + 3, matchKs);
+				char after_b = richtext[starti + 2];
+				while (char.IsLetterOrDigit(after_b) && after_b != '1')// Old versions of the Rtf standard used \b1 for turning bold on.
+				{	starti = richtext.IndexOf("\\b" , starti + 2, matchKs);
 					if (-1 == starti) break;
-					startindices.Add(richtext.IndexOf(" ", starti, matchKs));
-					var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
-					if (-1 == endi) break;
-					endindices.Add(endi);
+					after_b = richtext[starti + 2];
 				}
-			} catch(IndexOutOfRangeException) { }
+				if (-1 == starti) break;
+				startindices.Add(richtext.IndexOf(" ", starti, matchKs));
+				var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
+				if (-1 == endi) break;
+				endindices.Add(endi);
+			}  }catch(IndexOutOfRangeException) { }
 			
 			for (int i = 0; i < startindices.Count; ++i)
 			{	int begin = startindices[i];
