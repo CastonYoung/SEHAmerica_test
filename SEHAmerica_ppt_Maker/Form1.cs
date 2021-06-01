@@ -1,12 +1,19 @@
-﻿using System;
+using System;
+//using System.IO;
+//using System.Linq;
+//using System.Text;
+//using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Windows.Forms;
+//using System.Windows.Documents;
 using Microsoft.Office.Core;
 using Ppt = Microsoft.Office.Interop.PowerPoint;
 using Google.Apis.Customsearch.v1;
 using Google.Apis.Customsearch.v1.Data;
-
 using ListRequest = Google.Apis.Customsearch.v1.CseResource.ListRequest;
+using System.IO;
+using System.Text;
+using System.Drawing;
 
 namespace SEHAmerica_ppt_Maker
 {
@@ -19,7 +26,7 @@ namespace SEHAmerica_ppt_Maker
 		public const string powerpointformat = "Powerpoint (*.ppt;*.pptx;*.pptm)|*.ppt;*.pptx;*.pptm";
 		
 		Ppt.Application PowerPoint_App;
-		Ppt.Presentations multi_presentations;
+		Ppt.Presentations presentation_list;
 		Ppt.Presentation presentation;
 		Ppt.PpSlideLayout layout;	//I went ahead and added references to all slide layouts for extensibility.
 		#region ppLayouts
@@ -99,7 +106,7 @@ namespace SEHAmerica_ppt_Maker
 			presentation.SlideMaster.CustomLayouts[Ppt.PpSlideLayout.ppLayoutPictureWithCaption];//36
 		#endregion
 		Ppt.Slide Active_slide => PowerPoint_App.ActiveWindow.View.Slide;
-		ImageList thumb_list, image_list;
+		ImageList thumb_list, image_list;	//Lists of the "thumbnail" images and the full image links.
 		OpenFileDialog ofd;
 		List<string> box_list;
 		string file_path = null;
@@ -128,14 +135,22 @@ namespace SEHAmerica_ppt_Maker
 
 			image_count = 10;	//For now we're just going with 10.
 			thumb_list = new ImageList();
-			image_list = new ImageList
-				{ ImageSize = new System.Drawing.Size(160, 160) };
+			image_list = new ImageList { ImageSize = new Size(160, 160) };
 			box_list = new List<string>();
+
+			PowerPoint_App = new Ppt.Application();
+			presentation_list = PowerPoint_App.Presentations;
 		}
 
 		public bool NoPowerPoint()
 		{	
-			try { return null == PowerPoint_App || "PowerPoint" == PowerPoint_App.Caption; }
+			try
+			{	if (presentation_list.Count < 1 || "PowerPoint" == PowerPoint_App.Caption)
+					return true;
+				else if (null == presentation)
+					presentation = presentation_list[presentation_list.Count - 1];
+				return false;	//Actually ("PowerPoint" == PowerPoint_App.Caption) and (presentation_list.Count == 1) should be equivilent.
+			}
 			catch(System.Runtime.InteropServices.COMException)
 			{	MessageBox.Show(frOz_err_msg);
 				return true;
@@ -144,80 +159,85 @@ namespace SEHAmerica_ppt_Maker
 
 		private void CreateNewPresentation()
 		{
-			PowerPoint_App = new Ppt.Application();
-			multi_presentations = PowerPoint_App.Presentations;
-			presentation = multi_presentations.Add();
+			SaveFileDialog sfd = new SaveFileDialog { Filter = powerpointformat };
+			try
+			{	if (sfd.ShowDialog() == DialogResult.OK) file_path = sfd.FileName;
+				else return;
+			} catch (SystemException exc)
+			{	MessageBox.Show(save_err_msg + sfd.FileName + ":\n\n" + exc);
+				return;
+			} finally { sfd.Dispose(); }
+
+			presentation = presentation_list.Add();
 			layout = Ppt.PpSlideLayout.ppLayoutText;
 			presentation.Slides.AddSlide(1, presentation.SlideMaster.CustomLayouts[layout]);
+			ChangeButtons();
+		}
+
+		private void LoadPresentation()
+		{	
+			ofd = new OpenFileDialog { Filter = powerpointformat };
+			try
+			{	if (ofd.ShowDialog() == DialogResult.OK) file_path = ofd.FileName;
+				else return;
+			} catch (SystemException exc)
+			{	MessageBox.Show(open_err_msg + ofd.FileName + ":\n\n" + exc);
+				return;
+			} finally { ofd.Dispose(); }
+
+			presentation = presentation_list.Open(file_path, msoFalse, msoFalse, msoTrue);
+			ChangeButtons();
 		}
 		
 		private void ReadSlide(object sender, EventArgs e)
 		{
-			if (NoPowerPoint())
-			{	ofd = new OpenFileDialog { Filter = powerpointformat };
-				try
-				{	if (ofd.ShowDialog() == DialogResult.OK) file_path = ofd.FileName;
-					else return;
-				} catch (SystemException exc)
-				{	MessageBox.Show(open_err_msg + ofd.FileName + ":\n\n" + exc);
-					return;
-				} finally { ofd.Dispose(); }
+			if (NoPowerPoint()) LoadPresentation();
+			
+			TitleBox.Clear();
+			BodyTextBox.Clear();
+			BodyTextBox.ZoomFactor = 1f;//This line is to alleviate a bug in the RichTextBox class that
+			layout = Active_slide.Layout;//^prevents display of the proper ZoomFactor after clearing it.
 
-				PowerPoint_App = new Ppt.Application();
-				multi_presentations = PowerPoint_App.Presentations;
-				presentation = multi_presentations.Open(file_path, MsoTriState.msoFalse, MsoTriState.msoFalse, MsoTriState.msoTrue);
-			}
-
-			TitleBox.Text	= string.Empty;
-			BodyTextBox.Text= string.Empty;
-			layout = Active_slide.Layout;
-
-			if (layout == Ppt.PpSlideLayout.ppLayoutText)
-			{	TitleBox.Text	= Active_slide.Shapes[1].TextFrame.TextRange.Text;
-				BodyTextBox.Text= Active_slide.Shapes[2].TextFrame.TextRange.Text;
-			}
-			else foreach (var item in presentation.Slides[1].Shapes)
+			foreach (var item in presentation.Slides[1].Shapes)
 			{	var shape = (Ppt.Shape)item;
-				if (shape.HasTextFrame != MsoTriState.msoTrue) continue;
+				if (shape.HasTextFrame != msoTrue) continue;
 
 				if (shape.Name.Contains("Title"))
 				{	TitleBox.Text += shape.TextFrame.TextRange.Text + ' ';
 					box_list.Insert(0, shape.Name);
 				}
 				
-				else if(shape.TextFrame.HasText == MsoTriState.msoTrue)
+				else if(shape.TextFrame.HasText == msoTrue)
 				{	IDataObject clipped = Clipboard.GetDataObject();
 					shape.TextFrame.TextRange.Copy();
 					BodyTextBox.Paste();
+					//if (BodyTextBox.Font.SizeInPoints > 17f) BodyTextBox.ZoomFactor = 0.5f;
+					if (shape.TextFrame.TextRange.Font.Size > 17f) BodyTextBox.ZoomFactor = 0.5f;
 					Clipboard.SetDataObject(clipped, true);
 					box_list.Add(shape.Name);
 				}
 			}
 		}
 
+		/* While I really should take some of the conditions outside of the loop; seeing
+		 * as I already know of a bug I'd need to fix inside If Else block, and I don't
+		 * even know if the optimizer will do it for me; I decided I'd just make a note
+		 * of it, and leave all of the stuff requiring repeating code for later.
+		 */
 		private void Save(object sender, EventArgs e)
-		{
+		{	
+			bool new_presentation = NoPowerPoint();
 			try
-			{	if (NoPowerPoint())
-				{	SaveFileDialog sfd = new SaveFileDialog { Filter = powerpointformat };
-					try
-					{	if (sfd.ShowDialog() == DialogResult.OK) file_path = sfd.FileName;
-						else return;
-					} catch (SystemException exc)
-					{	MessageBox.Show(save_err_msg + sfd.FileName + ":\n\n" + exc);
-						return;
-					} finally { sfd.Dispose(); }
-				
-					CreateNewPresentation();
-				}
-				else foreach (var item in presentation.Slides[1].Shapes)
+			{	if (new_presentation) CreateNewPresentation();
+				foreach (var item in presentation.Slides[1].Shapes)
 				{	var shape = (Ppt.Shape)item;
-					if (shape.HasTextFrame != MsoTriState.msoTrue) continue;
+					if (shape.HasTextFrame != msoTrue) continue;
 
-					if (shape.Name == box_list[0])
+					if ((box_list.Count > 0 && shape.Name == box_list[0]) ||
+						(box_list.Count < 1 && shape.Name.Contains("Title")))
 						shape.TextFrame.TextRange.Text = TitleBox.Text;
 				
-					else if(box_list.Contains(shape.Name))
+					else if(box_list.Contains(shape.Name) || presentation.Slides[1].Shapes.Count==2)
 					{	IDataObject clipped = Clipboard.GetDataObject();
 						BodyTextBox.SelectAll();
 						BodyTextBox.Copy();
@@ -226,17 +246,82 @@ namespace SEHAmerica_ppt_Maker
 					}
 				}
 
-				presentation.SaveAs(file_path);
-
+				if (new_presentation) presentation.SaveAs(file_path);
 			} catch (ArgumentException exc)
 			{	MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc);	}
 		}
 
+		private string[] ParseText(string titletext, string richtext)
+		{	
+			const StringComparison matchKs = StringComparison.Ordinal;
+			List<string> terms = new List<string>(new string[] { titletext });
+			List<int> startindices = new List<int>(), endindices = new List<int>{-3};
+			//char[] whitespace = {' ','\n','\t'};
+			
+			try{for (int i = 0; i < image_count - 1; ++i)
+			{	var starti = richtext.IndexOf("\\b" , endindices[i] + 3, matchKs);
+				char after_b = richtext[starti + 2];
+				while (char.IsLetterOrDigit(after_b) && after_b != '1')// Old versions of the Rtf standard used \b1 for turning bold on.
+				{	starti = richtext.IndexOf("\\b" , starti + 2, matchKs);
+					if (-1 == starti) break;
+					after_b = richtext[starti + 2];
+				}
+				if (-1 == starti) break;
+				starti = richtext.IndexOf(" ", starti, matchKs);
+				if (-1 == starti) break;	//Tests have shown that an empty bolded range of text with return characters for delimination can appear at the end of rich text.
+				startindices.Add(starti);
+				var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
+				if (-1 == endi) break;
+				endindices.Add(endi);
+			}  }catch(IndexOutOfRangeException) { }
+			
+			for (int i = 0; i < startindices.Count; ++i)
+			{	int begin = startindices[i];
+				var boldedtext = richtext.Substring(begin, endindices[i+1] - begin);
+				var filteredtext = RemovePunct(boldedtext, '.', '\"','\'','?','*','\r').Trim();
+				if (string.Empty != filteredtext) terms.Add(filteredtext);
+			}
+
+			return terms.ToArray();
+		}
+
+		private string[] ParseTextDirect()
+		{	
+			const StringSplitOptions nOMTs = StringSplitOptions.RemoveEmptyEntries;
+			List<string> terms = new List<string>();
+			Ppt.TextRange run;
+
+			foreach (var item in presentation.Slides[1].Shapes)
+			{	var shape = (Ppt.Shape)item;
+				if (shape.HasTextFrame != msoTrue) continue;
+
+				if (shape.Name.Contains("Title"))
+					terms.Insert(0, shape.TextFrame.TextRange.Text);
+				
+				else if(shape.TextFrame.HasText == msoTrue)
+				{	for (int i = 1; i < image_count - 1; ++i)
+					{	run = shape.TextFrame.TextRange.Runs(i);
+						if (run == null) break;
+						run.RemovePeriods();
+						if (run.Font.Bold == msoTrue)
+						{	var punctless = RemovePunct(run.Text.Trim(), '\"','\'','?','*','\r');
+							terms.AddRange(punctless.Split(new char[]{'\t','\n'}, nOMTs));
+						}
+					}
+				}
+			}
+
+			return terms.ToArray();
+		}
+
 		private void SearchImages(object sender, EventArgs e)
 		{
-			if (NoPowerPoint()) return;
+			if (NoPowerPoint()) LoadPresentation();
 
-			var imgs = GoogleImageSearch(ParseText(TitleBox.Text, BodyTextBox.Rtf), image_count);
+			List<Double_Links> imgs;
+			if (CheckNativeBoxes.Checked)
+				 imgs = GoogleImageSearch(ParseText(TitleBox.Text, BodyTextBox.Rtf), image_count);
+			else imgs = GoogleImageSearch(ParseTextDirect(), image_count);
 			
 			var pb = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom };
 			for(int i = 0; i < imgs.Count; ++i)
@@ -253,13 +338,12 @@ namespace SEHAmerica_ppt_Maker
 					//image_list.Images.Add(pb.ErrorImage);
 				}
 			}
-
 			ListView1.SmallImageList = thumb_list;
 			ListView1.LargeImageList = image_list;
 			ListView1.StateImageList = image_list;
 		}
 
-		private void NewLoadImages(object sender, EventArgs e)
+		private void LoadImages(object sender, EventArgs e)
 		{ 
 			foreach (ListViewItem image in ListView1.SelectedItems)
 			{	try { Active_slide.Shapes.AddPicture(image.Text, msoFalse, msoTrue, 0f, 0f); }
@@ -268,50 +352,69 @@ namespace SEHAmerica_ppt_Maker
 			}
 		}
 
-		private void LoadImages()
-		{	
-			/*OpenFileDialog*/ ofd = new OpenFileDialog();
-			ofd.Filter = "Image (*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.wdp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tif;*.tiff;*.wdp";
+		private void UseNativeTextBoxes(object sender, EventArgs e)
+		{
+			Size temp;
 			
-			try { if (ofd.ShowDialog() != DialogResult.OK) ofd.Dispose(); }
-			catch (Exception exc)
-			{	MessageBox.Show(open_err_msg + ofd.FileName + ":\n\n" + exc);
-				if (ofd != null) ofd.Dispose();
+			if (CheckNativeBoxes.Checked)
+			{	label1.Show();
+				TitleBox.Show();
+				label2.Show();
+				BodyTextBox.Show();ListView1.Location = placeHolder.Location;//new Point(location0.Item1, location0.Item2);
+				placeHolder.Location = TitleBox.Location;	//I used a panel instead of just setting the location because of a bug that screws up location data.
+				temp = ListView1.Size;
+				ListView1.Size = placeHolder.Size;//new Size(size0.Item1, size0.Item2);
+				placeHolder.Size = temp;
+				if (!NoPowerPoint())
+				{	ImageBtn.Location = new Point(ImageBtn.Location.X, 156);
+					//Read_Btn.Enabled = true;
+					Read_Btn.Show();
+					//WriteBtn.Enabled = true;
+					WriteBtn.Show();
+				}
+			}
+			else
+			{	label1.Hide();
+				TitleBox.Hide();
+				label2.Hide();
+				BodyTextBox.Hide();
+				placeHolder.Location = ListView1.Location;
+				ListView1.Location = TitleBox.Location;
+				temp = ListView1.Size;
+				ListView1.Size = placeHolder.Size;
+				placeHolder.Size = temp;
+				if (!NoPowerPoint())
+				{	ImageBtn.Location = Read_Btn.Location;
+					Read_Btn.Hide();
+					//Read_Btn.Enabled = false;
+					WriteBtn.Hide();
+					//WriteBtn.Enabled = false;
+				}
 			}
 		}
 
-		private string[] ParseText(string titletext, string richtext)
-		{	
-			const StringComparison matchKs = StringComparison.Ordinal;
-			List<string> innerterms = new List<string>(new string[] { titletext });
-			List<int> startindices = new List<int>(), endindices = new List<int>{-3};
-
-			
-			try
-			{	for (int i = 0; i < image_count - 1; ++i)
-				{	var starti = richtext.IndexOf("\\b" , endindices[i] + 3, matchKs);
-					char after_b = richtext[starti + 2];
-					while (char.IsLetterOrDigit(after_b) && after_b != '1')// Old versions of the Rtf standard used \b1 for turning bold on.
-					{	starti = richtext.IndexOf("\\b" , starti + 2, matchKs);
-						if (-1 == starti) break;
-						after_b = richtext[starti + 2];
-					}
-					if (-1 == starti) break;
-					startindices.Add(richtext.IndexOf(" ", starti, matchKs));
-					var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
-					if (-1 == endi) break;
-					endindices.Add(endi);
-				}
-			} catch(IndexOutOfRangeException) { }
-			
-			for (int i = 0; i < startindices.Count; ++i)
-			{	int begin = startindices[i];
-				var boldedtext = richtext.Substring(begin, endindices[i+1] - begin);
-				var filteredtext = RemovePunct(boldedtext, '.', '\"','\'','?','*','\r').Trim();
-				if (string.Empty != filteredtext) innerterms.Add(filteredtext);
+		private void ChangeButtons()
+		{
+			Read_Btn.Text =  "Read";
+			WriteBtn.Text = "Write";
+			if (!CheckNativeBoxes.Checked)
+			{	ImageBtn.Location = Read_Btn.Location;
+				Read_Btn.Hide();
+				//Read_Btn.Enabled = false;
+				WriteBtn.Hide();
+				//WriteBtn.Enabled = false;
 			}
+		}
 
-			return innerterms.ToArray();
+		private void B(object sender, KeyPressEventArgs e)
+		{
+			if (ModifierKeys == Keys.Control)
+			{	var font = BodyTextBox.SelectionFont;
+				if (font.Bold) BodyTextBox.SelectionFont =
+					new System.Drawing.Font(font, font.Style & ~System.Drawing.FontStyle.Bold);
+				else BodyTextBox.SelectionFont =
+					new System.Drawing.Font(font, font.Style |  System.Drawing.FontStyle.Bold);
+			}
 		}
 
 		private List<Double_Links> GoogleImageSearch(string[] terms, int n_images)
@@ -329,17 +432,6 @@ namespace SEHAmerica_ppt_Maker
 				Search(searchservice, terms[i], Math.Max(1, n_images/terms.Length), /*out*/imageUrls);
 			
 			return imageUrls;
-		}
-
-		private void b(object sender, KeyPressEventArgs e)
-		{
-			if (ModifierKeys == Keys.Control)
-			{	var font = BodyTextBox.SelectionFont;
-				if (font.Bold) BodyTextBox.SelectionFont =
-					new System.Drawing.Font(font, font.Style & ~System.Drawing.FontStyle.Bold);
-				else BodyTextBox.SelectionFont =
-					new System.Drawing.Font(font, font.Style |  System.Drawing.FontStyle.Bold);
-			}
 		}
 
 		private void Search(CustomsearchService searchservice, string term, int n_searches, /*out*/List<Double_Links> imageUrls)
