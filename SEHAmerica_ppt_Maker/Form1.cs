@@ -20,9 +20,11 @@ namespace SEHAmerica_ppt_Maker
 	public partial class Form1 : Form
 	{
 		public const string save_err_msg = "Unexpected Error when trying to save to ";
+		public const string wrIt_err_msg = "Unexpected Error when trying to write to ";
 		public const string open_err_msg = "Unexpected Error when trying to open ";
 		public const string load_err_msg = "Unexpected Error when trying to load ";
 		public const string frOz_err_msg = "PowerPoint is in an unresponsive state.  Please resolve.";
+		public const string auto_denied = "PowerPoint Helper was denied access to ";
 		public const string powerpointformat = "Powerpoint (*.ppt;*.pptx;*.pptm)|*.ppt;*.pptx;*.pptm";
 		
 		Ppt.Application PowerPoint_App;
@@ -109,6 +111,8 @@ namespace SEHAmerica_ppt_Maker
 		ImageList thumb_list, image_list;	//Lists of the "thumbnail" images and the full image links.
 		OpenFileDialog ofd;
 		List<string> box_list;
+		readonly Point initloc;
+		readonly Size change;				//How much the size of the ListView of images needs to change.
 		string file_path = null;
 		int image_count;
 
@@ -137,6 +141,9 @@ namespace SEHAmerica_ppt_Maker
 			thumb_list = new ImageList();
 			image_list = new ImageList { ImageSize = new Size(160, 160) };
 			box_list = new List<string>();
+			initloc = ListView1.Location;
+			change= new Size
+				(ListView1.Width - BodyTextBox.Width, TitleBox.Location.Y - ListView1.Location.Y);
 
 			PowerPoint_App = new Ppt.Application();
 			presentation_list = PowerPoint_App.Presentations;
@@ -157,46 +164,48 @@ namespace SEHAmerica_ppt_Maker
 			}
 		}
 
-		private void CreateNewPresentation()
+		private bool CreateNewPresentation()
 		{
 			SaveFileDialog sfd = new SaveFileDialog { Filter = powerpointformat };
 			try
 			{	if (sfd.ShowDialog() == DialogResult.OK) file_path = sfd.FileName;
-				else return;
+				else return false;
 			} catch (SystemException exc)
 			{	MessageBox.Show(save_err_msg + sfd.FileName + ":\n\n" + exc);
-				return;
+				return false;
 			} finally { sfd.Dispose(); }
 
 			presentation = presentation_list.Add();
 			layout = Ppt.PpSlideLayout.ppLayoutText;
 			presentation.Slides.AddSlide(1, presentation.SlideMaster.CustomLayouts[layout]);
 			ChangeButtons();
+			return true;
 		}
 
-		private void LoadPresentation()
+		private bool LoadPresentation()
 		{	
 			ofd = new OpenFileDialog { Filter = powerpointformat };
 			try
 			{	if (ofd.ShowDialog() == DialogResult.OK) file_path = ofd.FileName;
-				else return;
+				else return false;
 			} catch (SystemException exc)
 			{	MessageBox.Show(open_err_msg + ofd.FileName + ":\n\n" + exc);
-				return;
+				return false;
 			} finally { ofd.Dispose(); }
 
 			presentation = presentation_list.Open(file_path, msoFalse, msoFalse, msoTrue);
 			ChangeButtons();
+			return true;
 		}
 		
 		private void ReadSlide(object sender, EventArgs e)
 		{
-			if (NoPowerPoint()) LoadPresentation();
+			if (NoPowerPoint()) if(! LoadPresentation() ) return;//If there is no presentation open load one, but return if the user cancels.
 			
 			TitleBox.Clear();
 			BodyTextBox.Clear();
 			BodyTextBox.ZoomFactor = 1f;//This line is to alleviate a bug in the RichTextBox class that
-			layout = Active_slide.Layout;//^prevents display of the proper ZoomFactor after clearing it.
+			//^prevents display of the proper ZoomFactor after clearing it.
 
 			foreach (var item in presentation.Slides[1].Shapes)
 			{	var shape = (Ppt.Shape)item;
@@ -228,7 +237,7 @@ namespace SEHAmerica_ppt_Maker
 		{	
 			bool new_presentation = NoPowerPoint();
 			try
-			{	if (new_presentation) CreateNewPresentation();
+			{	if (new_presentation) if (! CreateNewPresentation() ) return;//If there is no presentation open create one, but return if the user cancels.
 				foreach (var item in presentation.Slides[1].Shapes)
 				{	var shape = (Ppt.Shape)item;
 					if (shape.HasTextFrame != msoTrue) continue;
@@ -237,7 +246,7 @@ namespace SEHAmerica_ppt_Maker
 						(box_list.Count < 1 && shape.Name.Contains("Title")))
 						shape.TextFrame.TextRange.Text = TitleBox.Text;
 				
-					else if(box_list.Contains(shape.Name) || presentation.Slides[1].Shapes.Count==2)
+					else if(box_list.Contains(shape.Name) || presentation.Slides[1].Shapes.Count == 2)
 					{	IDataObject clipped = Clipboard.GetDataObject();
 						BodyTextBox.SelectAll();
 						BodyTextBox.Copy();
@@ -246,9 +255,17 @@ namespace SEHAmerica_ppt_Maker
 					}
 				}
 
-				if (new_presentation) presentation.SaveAs(file_path);
+				if (new_presentation) try { presentation.SaveAs(file_path); }
+					catch (FileNotFoundException)
+					{	MessageBox.Show(save_err_msg + file_path + " (invalid name).");	}
+					catch (System.Runtime.InteropServices.COMException exc)
+					{	MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc);	}
+			} catch (System.Runtime.InteropServices.COMException exc)
+			{	if (exc.ErrorCode == -2147188160)
+					 MessageBox.Show(auto_denied + (file_path?? "the presentation.")+ "\n\n" + exc);
+				else MessageBox.Show(wrIt_err_msg + file_path +  ":\n\n" + exc);
 			} catch (ArgumentException exc)
-			{	MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc);	}
+			{	MessageBox.Show(wrIt_err_msg + file_path + ":\n\n" + exc);	}
 		}
 
 		private string[] ParseText(string titletext, string richtext)
@@ -268,7 +285,7 @@ namespace SEHAmerica_ppt_Maker
 				}
 				if (-1 == starti) break;
 				starti = richtext.IndexOf(" ", starti, matchKs);
-				if (-1 == starti) break;	//Tests have shown that an empty bolded range of text with return characters for delimination can appear at the end of rich text.
+				if (-1 == starti) break;	//An empty bolded range of text with return characters for delimination can appear at the end of rich text.
 				startindices.Add(starti);
 				var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
 				if (-1 == endi) break;
@@ -286,37 +303,43 @@ namespace SEHAmerica_ppt_Maker
 		}
 
 		private string[] ParseTextDirect()
-		{	
-			const StringSplitOptions nOMTs = StringSplitOptions.RemoveEmptyEntries;
-			List<string> terms = new List<string>();
-			Ppt.TextRange run;
+		{	try
+			{	const StringSplitOptions nOMTs = StringSplitOptions.RemoveEmptyEntries;
+				List<string> terms = new List<string>();
+				Ppt.TextRange run;
 
-			foreach (var item in presentation.Slides[1].Shapes)
-			{	var shape = (Ppt.Shape)item;
-				if (shape.HasTextFrame != msoTrue) continue;
+				foreach (var item in presentation.Slides[1].Shapes)
+				{	var shape = (Ppt.Shape)item;
+					if (shape.HasTextFrame != msoTrue) continue;
 
-				if (shape.Name.Contains("Title"))
-					terms.Insert(0, shape.TextFrame.TextRange.Text);
+					if (shape.Name.Contains("Title"))
+						terms.Insert(0, shape.TextFrame.TextRange.Text);
 				
-				else if(shape.TextFrame.HasText == msoTrue)
-				{	for (int i = 1; i < image_count - 1; ++i)
-					{	run = shape.TextFrame.TextRange.Runs(i);
-						if (run == null) break;
-						run.RemovePeriods();
-						if (run.Font.Bold == msoTrue)
-						{	var punctless = RemovePunct(run.Text.Trim(), '\"','\'','?','*','\r');
-							terms.AddRange(punctless.Split(new char[]{'\t','\n'}, nOMTs));
+					else if(shape.TextFrame.HasText == msoTrue)
+					{	for (int i = 1; i < image_count - 1; ++i)
+						{	run = shape.TextFrame.TextRange.Runs(i);
+							if (run == null) break;
+							run.RemovePeriods();
+							if (run.Font.Bold == msoTrue)
+							{	var punctless = RemovePunct(run.Text.Trim(), '\"','\'','?','*','\r');
+								terms.AddRange(punctless.Split(new char[]{'\t','\n'}, nOMTs));
+							}
 						}
 					}
 				}
-			}
 
-			return terms.ToArray();
+				return terms.ToArray();
+			} catch (System.Runtime.InteropServices.COMException exc)
+			{	if (exc.ErrorCode == -2147188160)
+					 MessageBox.Show(auto_denied + (file_path?? "the presentation.")+ "\n\n" + exc);
+				else MessageBox.Show("Unexcpected error when trying to parse text." + "\n\n" + exc);
+				return Array.Empty<string>();
+			}
 		}
 
 		private void SearchImages(object sender, EventArgs e)
 		{
-			if (NoPowerPoint()) LoadPresentation();
+			if (NoPowerPoint()) if(! LoadPresentation() ) return;//If there is no presentation open create one, but return if the user cancels.
 
 			List<Double_Links> imgs;
 			if (CheckNativeBoxes.Checked)
@@ -354,17 +377,13 @@ namespace SEHAmerica_ppt_Maker
 
 		private void UseNativeTextBoxes(object sender, EventArgs e)
 		{
-			Size temp;
-			
 			if (CheckNativeBoxes.Checked)
 			{	label1.Show();
 				TitleBox.Show();
 				label2.Show();
-				BodyTextBox.Show();ListView1.Location = placeHolder.Location;//new Point(location0.Item1, location0.Item2);
-				placeHolder.Location = TitleBox.Location;	//I used a panel instead of just setting the location because of a bug that screws up location data.
-				temp = ListView1.Size;
-				ListView1.Size = placeHolder.Size;//new Size(size0.Item1, size0.Item2);
-				placeHolder.Size = temp;
+				BodyTextBox.Show();
+				ListView1.Size += change;
+				ListView1.Location = initloc;
 				if (!NoPowerPoint())
 				{	ImageBtn.Location = new Point(ImageBtn.Location.X, 156);
 					//Read_Btn.Enabled = true;
@@ -378,11 +397,9 @@ namespace SEHAmerica_ppt_Maker
 				TitleBox.Hide();
 				label2.Hide();
 				BodyTextBox.Hide();
-				placeHolder.Location = ListView1.Location;
+				ListView1.Size = new Size
+					(BodyTextBox.Width, ListView1.Height + ListView1.Location.Y - TitleBox.Location.Y);
 				ListView1.Location = TitleBox.Location;
-				temp = ListView1.Size;
-				ListView1.Size = placeHolder.Size;
-				placeHolder.Size = temp;
 				if (!NoPowerPoint())
 				{	ImageBtn.Location = Read_Btn.Location;
 					Read_Btn.Hide();
@@ -407,18 +424,34 @@ namespace SEHAmerica_ppt_Maker
 		}
 
 		private void B(object sender, KeyPressEventArgs e)
+			{ if (ModifierKeys == Keys.Control) ToggleBold(); }
+
+		private void BoldBtn_Click(object sender, EventArgs e) => ToggleBold();
+
+		private void ToggleBold()
 		{
-			if (ModifierKeys == Keys.Control)
-			{	var font = BodyTextBox.SelectionFont;
-				if (font.Bold) BodyTextBox.SelectionFont =
-					new System.Drawing.Font(font, font.Style & ~System.Drawing.FontStyle.Bold);
-				else BodyTextBox.SelectionFont =
-					new System.Drawing.Font(font, font.Style |  System.Drawing.FontStyle.Bold);
+			var font = BodyTextBox.SelectionFont;
+			if (font.Bold)
+			{	BodyTextBox.SelectionFont = new Font(font, font.Style & ~FontStyle.Bold);
+				Bold_Btn.BackColor = DefaultBackColor;
 			}
+			else /*!Bold*/
+			{	BodyTextBox.SelectionFont = new Font(font, font.Style |  FontStyle.Bold);
+				Bold_Btn.BackColor = SystemColors.ActiveCaption;
+			}
+		}
+
+		private void BodyTextBox_SelectionChanged(object sender, EventArgs e)
+		{
+			if (BodyTextBox.SelectionFont.Bold)
+				 Bold_Btn.BackColor = SystemColors.ActiveCaption;
+			else Bold_Btn.BackColor = DefaultBackColor;
 		}
 
 		private List<Double_Links> GoogleImageSearch(string[] terms, int n_images)
 		{
+			if (terms.Length == 0) return new List<Double_Links>();
+			
 			var init = new Google.Apis.Services.BaseClientService.Initializer
 				{ ApiKey = "AIzaSyAX6sFmumdC70LOkqwZbGMEXr8Tcbr8Z_k" };
 

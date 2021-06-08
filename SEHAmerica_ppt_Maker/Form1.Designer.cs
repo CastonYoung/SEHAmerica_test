@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
 			this.label1 = new System.Windows.Forms.Label();
 			this.TitleBox = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -40,7 +41,7 @@
 			this.Menu = new System.Windows.Forms.MenuStrip();
 			this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.CheckNativeBoxes = new System.Windows.Forms.ToolStripMenuItem();
-			this.placeHolder = new System.Windows.Forms.Panel();
+			this.Bold_Btn = new System.Windows.Forms.Button();
 			this.Menu.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -89,6 +90,7 @@
 			this.BodyTextBox.Size = new System.Drawing.Size(538, 157);
 			this.BodyTextBox.TabIndex = 3;
 			this.BodyTextBox.Text = "";
+			this.BodyTextBox.SelectionChanged += new System.EventHandler(this.BodyTextBox_SelectionChanged);
 			this.BodyTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.B);
 			// 
 			// ImageBtn
@@ -175,23 +177,28 @@
 			this.CheckNativeBoxes.Text = "Use Internal Rich Text Box";
 			this.CheckNativeBoxes.CheckedChanged += new System.EventHandler(this.UseNativeTextBoxes);
 			// 
-			// placeHolder
+			// Bold_Btn
 			// 
-			this.placeHolder.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.placeHolder.Location = new System.Drawing.Point(95, 44);
-			this.placeHolder.MinimumSize = new System.Drawing.Size(152, 16);
-			this.placeHolder.Name = "placeHolder";
-			this.placeHolder.Size = new System.Drawing.Size(538, 387);
-			this.placeHolder.TabIndex = 16;
-			this.placeHolder.Visible = false;
+			this.Bold_Btn.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("Bold_Btn.BackgroundImage")));
+			this.Bold_Btn.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+			this.Bold_Btn.FlatAppearance.BorderSize = 0;
+			this.Bold_Btn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+			this.Bold_Btn.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+			this.Bold_Btn.Location = new System.Drawing.Point(64, 130);
+			this.Bold_Btn.Margin = new System.Windows.Forms.Padding(0);
+			this.Bold_Btn.Name = "Bold_Btn";
+			this.Bold_Btn.Padding = new System.Windows.Forms.Padding(1, 0, 0, 0);
+			this.Bold_Btn.Size = new System.Drawing.Size(24, 24);
+			this.Bold_Btn.TabIndex = 16;
+			this.Bold_Btn.UseVisualStyleBackColor = true;
+			this.Bold_Btn.Click += new System.EventHandler(this.BoldBtn_Click);
 			// 
 			// Form1
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(800, 469);
+			this.Controls.Add(this.Bold_Btn);
 			this.Controls.Add(this.Menu);
 			this.Controls.Add(this.ListView1);
 			this.Controls.Add(this.Read_Btn);
@@ -201,7 +208,6 @@
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.TitleBox);
 			this.Controls.Add(this.label1);
-			this.Controls.Add(this.placeHolder);
 			this.MainMenuStrip = this.Menu;
 			this.MinimumSize = new System.Drawing.Size(95, 300);
 			this.Name = "Form1";
@@ -227,7 +233,7 @@
 		private System.Windows.Forms.MenuStrip Menu;
 		private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem CheckNativeBoxes;
-		private System.Windows.Forms.Panel placeHolder;
+		private System.Windows.Forms.Button Bold_Btn;
 	}
 }
 
