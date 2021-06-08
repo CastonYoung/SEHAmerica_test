@@ -155,10 +155,12 @@ namespace SEHAmerica_ppt_Maker
 			{	if (presentation_list.Count < 1 || "PowerPoint" == PowerPoint_App.Caption)
 					return true;
 				else if (null == presentation)
-					presentation = presentation_list[presentation_list.Count - 1];
+				{	presentation = presentation_list[presentation_list.Count];
+					ChangeButtons();
+				}
 				return false;	//Actually ("PowerPoint" == PowerPoint_App.Caption) and (presentation_list.Count == 1) should be equivilent.
 			}
-			catch(System.Runtime.InteropServices.COMException)
+			catch(System.Runtime.InteropServices.COMException exc)
 			{	MessageBox.Show(frOz_err_msg);
 				return true;
 			}
@@ -382,6 +384,8 @@ namespace SEHAmerica_ppt_Maker
 				TitleBox.Show();
 				label2.Show();
 				BodyTextBox.Show();
+				BoldBtn.Show();
+				//BoldBtn.Enabled = true;
 				ListView1.Size += change;
 				ListView1.Location = initloc;
 				if (!NoPowerPoint())
@@ -397,6 +401,8 @@ namespace SEHAmerica_ppt_Maker
 				TitleBox.Hide();
 				label2.Hide();
 				BodyTextBox.Hide();
+				BoldBtn.Hide();
+				//BoldBtn.Enabled = false;
 				ListView1.Size = new Size
 					(BodyTextBox.Width, ListView1.Height + ListView1.Location.Y - TitleBox.Location.Y);
 				ListView1.Location = TitleBox.Location;
@@ -423,8 +429,9 @@ namespace SEHAmerica_ppt_Maker
 			}
 		}
 
-		private void B(object sender, KeyPressEventArgs e)
-			{ if (ModifierKeys == Keys.Control) ToggleBold(); }
+		private void RichTextBox_KeyPress(object sender, KeyPressEventArgs e)
+			{ if (e.KeyChar == '\u0002') ToggleBold(); }
+		//	{ if (e.KeyChar == 'b' && ModifierKeys == Keys.Control) ToggleBold(); }
 
 		private void BoldBtn_Click(object sender, EventArgs e) => ToggleBold();
 
@@ -433,19 +440,19 @@ namespace SEHAmerica_ppt_Maker
 			var font = BodyTextBox.SelectionFont;
 			if (font.Bold)
 			{	BodyTextBox.SelectionFont = new Font(font, font.Style & ~FontStyle.Bold);
-				Bold_Btn.BackColor = DefaultBackColor;
+				BoldBtn.BackColor = DefaultBackColor;
 			}
-			else /*!Bold*/
+			else /*!font.Bold*/
 			{	BodyTextBox.SelectionFont = new Font(font, font.Style |  FontStyle.Bold);
-				Bold_Btn.BackColor = SystemColors.ActiveCaption;
+				BoldBtn.BackColor = SystemColors.ActiveCaption;
 			}
 		}
 
 		private void BodyTextBox_SelectionChanged(object sender, EventArgs e)
 		{
 			if (BodyTextBox.SelectionFont.Bold)
-				 Bold_Btn.BackColor = SystemColors.ActiveCaption;
-			else Bold_Btn.BackColor = DefaultBackColor;
+				 BoldBtn.BackColor = SystemColors.ActiveCaption;
+			else BoldBtn.BackColor = DefaultBackColor;
 		}
 
 		private List<Double_Links> GoogleImageSearch(string[] terms, int n_images)

@@ -28,7 +28,6 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
 			this.label1 = new System.Windows.Forms.Label();
 			this.TitleBox = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -41,7 +40,7 @@
 			this.Menu = new System.Windows.Forms.MenuStrip();
 			this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.CheckNativeBoxes = new System.Windows.Forms.ToolStripMenuItem();
-			this.Bold_Btn = new System.Windows.Forms.Button();
+			this.BoldBtn = new System.Windows.Forms.Button();
 			this.Menu.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -91,7 +90,7 @@
 			this.BodyTextBox.TabIndex = 3;
 			this.BodyTextBox.Text = "";
 			this.BodyTextBox.SelectionChanged += new System.EventHandler(this.BodyTextBox_SelectionChanged);
-			this.BodyTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.B);
+			this.BodyTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.RichTextBox_KeyPress);
 			// 
 			// ImageBtn
 			// 
@@ -177,28 +176,28 @@
 			this.CheckNativeBoxes.Text = "Use Internal Rich Text Box";
 			this.CheckNativeBoxes.CheckedChanged += new System.EventHandler(this.UseNativeTextBoxes);
 			// 
-			// Bold_Btn
+			// BoldBtn
 			// 
-			this.Bold_Btn.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("Bold_Btn.BackgroundImage")));
-			this.Bold_Btn.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-			this.Bold_Btn.FlatAppearance.BorderSize = 0;
-			this.Bold_Btn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-			this.Bold_Btn.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.Bold_Btn.Location = new System.Drawing.Point(64, 130);
-			this.Bold_Btn.Margin = new System.Windows.Forms.Padding(0);
-			this.Bold_Btn.Name = "Bold_Btn";
-			this.Bold_Btn.Padding = new System.Windows.Forms.Padding(1, 0, 0, 0);
-			this.Bold_Btn.Size = new System.Drawing.Size(24, 24);
-			this.Bold_Btn.TabIndex = 16;
-			this.Bold_Btn.UseVisualStyleBackColor = true;
-			this.Bold_Btn.Click += new System.EventHandler(this.BoldBtn_Click);
+			this.BoldBtn.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+			this.BoldBtn.FlatAppearance.BorderSize = 0;
+			this.BoldBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+			this.BoldBtn.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+			this.BoldBtn.Location = new System.Drawing.Point(56, 119);
+			this.BoldBtn.Margin = new System.Windows.Forms.Padding(0);
+			this.BoldBtn.Name = "BoldBtn";
+			this.BoldBtn.Padding = new System.Windows.Forms.Padding(2, 0, 0, 0);
+			this.BoldBtn.Size = new System.Drawing.Size(36, 36);
+			this.BoldBtn.TabIndex = 16;
+			this.BoldBtn.Text = "B";
+			this.BoldBtn.UseVisualStyleBackColor = true;
+			this.BoldBtn.Click += new System.EventHandler(this.BoldBtn_Click);
 			// 
 			// Form1
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(800, 469);
-			this.Controls.Add(this.Bold_Btn);
+			this.Controls.Add(this.BoldBtn);
 			this.Controls.Add(this.Menu);
 			this.Controls.Add(this.ListView1);
 			this.Controls.Add(this.Read_Btn);
@@ -233,7 +232,7 @@
 		private System.Windows.Forms.MenuStrip Menu;
 		private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem CheckNativeBoxes;
-		private System.Windows.Forms.Button Bold_Btn;
+		private System.Windows.Forms.Button BoldBtn;
 	}
 }
 
