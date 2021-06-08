@@ -259,15 +259,16 @@ namespace SEHAmerica_ppt_Maker
 
 				if (new_presentation) try { presentation.SaveAs(file_path); }
 					catch (FileNotFoundException)
-					{	MessageBox.Show(save_err_msg + file_path + " (invalid name).");	}
+						{ MessageBox.Show(save_err_msg + file_path + " (invalid name)."); }
 					catch (System.Runtime.InteropServices.COMException exc)
-					{	MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc);	}
+						{ MessageBox.Show(save_err_msg + file_path + ":\n\n" + exc); }
+
 			} catch (System.Runtime.InteropServices.COMException exc)
 			{	if (exc.ErrorCode == -2147188160)
 					 MessageBox.Show(auto_denied + (file_path?? "the presentation.")+ "\n\n" + exc);
 				else MessageBox.Show(wrIt_err_msg + file_path +  ":\n\n" + exc);
 			} catch (ArgumentException exc)
-			{	MessageBox.Show(wrIt_err_msg + file_path + ":\n\n" + exc);	}
+				{ MessageBox.Show(wrIt_err_msg + file_path + ":\n\n" + exc); }
 		}
 
 		private string[] ParseText(string titletext, string richtext)
@@ -277,22 +278,24 @@ namespace SEHAmerica_ppt_Maker
 			List<int> startindices = new List<int>(), endindices = new List<int>{-3};
 			//char[] whitespace = {' ','\n','\t'};
 			
-			try{for (int i = 0; i < image_count - 1; ++i)
-			{	var starti = richtext.IndexOf("\\b" , endindices[i] + 3, matchKs);
-				char after_b = richtext[starti + 2];
-				while (char.IsLetterOrDigit(after_b) && after_b != '1')// Old versions of the Rtf standard used \b1 for turning bold on.
-				{	starti = richtext.IndexOf("\\b" , starti + 2, matchKs);
+			try
+			{	for (int i = 0; i < image_count - 1; ++i)
+				{	var starti = richtext.IndexOf("\\b" , endindices[i] + 3, matchKs);
+					char after_b = richtext[starti + 2];
+					while (char.IsLetterOrDigit(after_b) && after_b != '1')// Old versions of the Rtf standard used \b1 for turning bold on.
+					{	starti = richtext.IndexOf("\\b" , starti + 2, matchKs);
+						if (-1 == starti) break;
+						after_b = richtext[starti + 2];
+					}
 					if (-1 == starti) break;
-					after_b = richtext[starti + 2];
-				}
-				if (-1 == starti) break;
-				starti = richtext.IndexOf(" ", starti, matchKs);
-				if (-1 == starti) break;	//An empty bolded range of text with return characters for delimination can appear at the end of rich text.
-				startindices.Add(starti);
-				var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
-				if (-1 == endi) break;
-				endindices.Add(endi);
-			}  }catch(IndexOutOfRangeException) { }
+					starti = richtext.IndexOf(" ", starti, matchKs);
+					if (-1 == starti) break;	//An empty bolded range of text with return characters for delimination can appear at the end of rich text.
+					startindices.Add(starti);
+					var endi = richtext.IndexOf("\\b0" , startindices[i] + 1, matchKs);
+					if (-1 == endi) break;
+					endindices.Add(endi);
+				} 
+			} catch(IndexOutOfRangeException) { }
 			
 			for (int i = 0; i < startindices.Count; ++i)
 			{	int begin = startindices[i];
@@ -351,9 +354,19 @@ namespace SEHAmerica_ppt_Maker
 			var pb = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom };
 			for(int i = 0; i < imgs.Count; ++i)
 			{	try
-				{	try { pb.Load(imgs[i].thumbnail); } catch (ArgumentException) { try { pb.Load(imgs[i].picture  ); } catch (ArgumentException) { pb.Image = pb.ErrorImage; } }//Try using the picture instead of the thumbnail, or if not an error message.
+				{	try { pb.Load(imgs[i].thumbnail); }
+					catch (ArgumentException)
+					{	try { pb.Load(imgs[i].picture); }
+						catch (ArgumentException)
+							{ pb.Image = pb.ErrorImage; }
+					}
 					thumb_list.Images.Add(pb.Image);
-					try { pb.Load(imgs[i].picture  ); } catch (ArgumentException) { try { pb.Load(imgs[i].thumbnail); } catch (ArgumentException) { pb.Image = pb.ErrorImage; } }//Try using the thumbnail instead of the picture, or if not an error message.
+					try { pb.Load(imgs[i].picture); }
+					catch (ArgumentException)
+					{	try { pb.Load(imgs[i].thumbnail); }
+						catch (ArgumentException)
+							{ pb.Image = pb.ErrorImage; }
+					}
 					image_list.Images.Add(pb.Image);
 					ListView1.Items.Add(imgs[i].picture, i);
 				} catch (System.Net.WebException)
