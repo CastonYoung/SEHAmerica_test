@@ -110,7 +110,6 @@ namespace SEHAmerica_ppt_Maker
 		Ppt.Slide Active_slide => PowerPoint_App.ActiveWindow.View.Slide;
 		ImageList thumb_list, image_list;	//Lists of the "thumbnail" images and the full image links.
 		OpenFileDialog ofd;
-		List<string> box_list;
 		readonly Point initloc;
 		readonly Size change;				//How much the size of the ListView of images needs to change.
 		string file_path = null;
@@ -140,7 +139,6 @@ namespace SEHAmerica_ppt_Maker
 			image_count = 10;	//For now we're just going with 10.
 			thumb_list = new ImageList();
 			image_list = new ImageList { ImageSize = new Size(160, 160) };
-			box_list = new List<string>();
 			initloc = ListView1.Location;
 			change= new Size
 				(ListView1.Width - BodyTextBox.Width, TitleBox.Location.Y - ListView1.Location.Y);
@@ -214,9 +212,7 @@ namespace SEHAmerica_ppt_Maker
 				if (shape.HasTextFrame != msoTrue) continue;
 
 				if (shape.Name.Contains("Title"))
-				{	TitleBox.Text += shape.TextFrame.TextRange.Text + ' ';
-					box_list.Insert(0, shape.Name);
-				}
+					TitleBox.Text += shape.TextFrame.TextRange.Text + ' ';
 				
 				else if(shape.TextFrame.HasText == msoTrue)
 				{	IDataObject clipped = Clipboard.GetDataObject();
@@ -225,17 +221,11 @@ namespace SEHAmerica_ppt_Maker
 					//if (BodyTextBox.Font.SizeInPoints > 17f) BodyTextBox.ZoomFactor = 0.5f;
 					if (shape.TextFrame.TextRange.Font.Size > 17f) BodyTextBox.ZoomFactor = 0.5f;
 					Clipboard.SetDataObject(clipped, true);
-					box_list.Add(shape.Name);
 				}
 			}
 		}
 
-		/* While I really should take some of the conditions outside of the loop; seeing
-		 * as I already know of a bug I'd need to fix inside If Else block, and I don't
-		 * even know if the optimizer will do it for me; I decided I'd just make a note
-		 * of it, and leave all of the stuff requiring repeating code for later.
-		 */
-		private void Save(object sender, EventArgs e)
+		private void Write(object sender, EventArgs e)
 		{	
 			bool new_presentation = NoPowerPoint();
 			try
@@ -244,11 +234,10 @@ namespace SEHAmerica_ppt_Maker
 				{	var shape = (Ppt.Shape)item;
 					if (shape.HasTextFrame != msoTrue) continue;
 
-					if ((box_list.Count > 0 && shape.Name == box_list[0]) ||
-						(box_list.Count < 1 && shape.Name.Contains("Title")))
+					if (shape.Name.Contains("Title"))
 						shape.TextFrame.TextRange.Text = TitleBox.Text;
 				
-					else if(box_list.Contains(shape.Name) || presentation.Slides[1].Shapes.Count == 2)
+					else
 					{	IDataObject clipped = Clipboard.GetDataObject();
 						BodyTextBox.SelectAll();
 						BodyTextBox.Copy();

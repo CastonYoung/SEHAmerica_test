@@ -116,7 +116,7 @@
 			this.WriteBtn.TabIndex = 5;
 			this.WriteBtn.Text = "New Presentation";
 			this.WriteBtn.UseVisualStyleBackColor = true;
-			this.WriteBtn.Click += new System.EventHandler(this.Save);
+			this.WriteBtn.Click += new System.EventHandler(this.Write);
 			// 
 			// Read_Btn
 			// 
